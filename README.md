@@ -1,4 +1,4 @@
-# okx-sample-market-maker
+# OKX Sample Market Maker
 
 ## Overview
 This is an unofficial sample Python market marker using [OKX V5 API](https://www.okx.com/docs-v5/en/#overview), based on the [OKX V5 API PYTHON SDK](https://github.com/okxapi/python-okx).
