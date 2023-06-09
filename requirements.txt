@@ -1,0 +1,5 @@
+python-okx>=0.1.9
+autobahn~=23.1.2
+shortuuid~=1.0.11
+Twisted~=22.10.0
+PyYAML~=6.0
