@@ -21,6 +21,10 @@ from okx_market_maker.market_data_service.model.OrderBook import OrderBook
 from okx_market_maker.position_management_service.model.Account import Account
 from okx_market_maker.order_management_service.model.Order import Orders, Order, OrderState, OrderSide
 from okx_market_maker.strategy.risk.RiskCalculator import RiskCalculator
+from okx_market_maker.market_data_service.WssMarketDataService import WssMarketDataService
+from okx_market_maker.order_management_service.WssOrderManagementService import WssOrderManagementService
+from okx_market_maker.position_management_service.WssPositionManagementService import WssPositionManagementService
+from okx_market_maker.market_data_service.RESTMarketDataService import RESTMarketDataService
 
 
 class BaseStrategy(ABC):
@@ -35,6 +39,19 @@ class BaseStrategy(ABC):
         self.trade_api = TradeAPI(api_key=api_key, api_secret_key=api_key_secret, passphrase=api_passphrase,
                                   flag='0' if not is_paper_trading else '1', debug=False)
         self.status_api = StatusAPI(flag='0' if not is_paper_trading else '1', debug=False)
+        self.mds = WssMarketDataService(
+            url="wss://ws.okx.com:8443/ws/v5/public?brokerId=9999" if is_paper_trading
+            else "wss://ws.okx.com:8443/ws/v5/public",
+            inst_id=TRADING_INSTRUMENT_ID,
+            channel="books"
+        )
+        self.rest_mds = RESTMarketDataService(is_paper_trading)
+        self.oms = WssOrderManagementService(
+            url="wss://ws.okx.com:8443/ws/v5/private?brokerId=9999" if is_paper_trading
+            else "wss://ws.okx.com:8443/ws/v5/private")
+        self.pms = WssPositionManagementService(
+            url="wss://ws.okx.com:8443/ws/v5/private?brokerId=9999" if is_paper_trading
+            else "wss://ws.okx.com:8443/ws/v5/private")
         self._strategy_order_dict = dict()
         self._strategy_measurement = StrategyMeasurement()
         self.params_loader = ParamsLoader()
@@ -135,8 +152,10 @@ class BaseStrategy(ABC):
             if client_order_id not in self._strategy_order_dict:
                 continue
             strategy_order = self._strategy_order_dict[client_order_id]
-            strategy_order.size = order_request.new_size
-            strategy_order.price = order_request.new_price
+            if order_request.new_size:
+                strategy_order.size = order_request.new_size
+            if order_request.new_price:
+                strategy_order.price = order_request.new_price
             strategy_order.amend_req_id = order_request.req_id
             strategy_order.strategy_order_status = StrategyOrderStatus.AMD_SENT
             print(f"AMEND ORDER {order_request.client_order_id} with new size {order_request.new_size} or new price "
@@ -265,6 +284,12 @@ class BaseStrategy(ABC):
         if order_book_delay > ORDER_BOOK_DELAYED_SEC:
             logging.warning(f"{TRADING_INSTRUMENT_ID} delayed in order books cache for {order_book_delay:.2f} seconds!")
             return False
+        check_sum_result: bool = order_book.do_check_sum()
+        if not check_sum_result:
+            logging.warning(f"{TRADING_INSTRUMENT_ID} orderbook checksum failed, re-subscribe MDS!")
+            self.mds.stop_service()
+            self.mds.run_service()
+            return False
         try:
             account = self.get_account()
         except ValueError:
@@ -330,7 +355,17 @@ class BaseStrategy(ABC):
             return False
         return True
 
+    def _run_exchange_connection(self):
+        self.mds.start()
+        self.oms.start()
+        self.pms.start()
+        self.rest_mds.start()
+        self.mds.run_service()
+        self.oms.run_service()
+        self.pms.run_service()
+
     def run(self):
+        self._run_exchange_connection()
         while 1:
             try:
                 exchange_normal = self.check_status()
