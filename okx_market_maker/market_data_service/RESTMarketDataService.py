@@ -12,9 +12,9 @@ from okx_market_maker.utils.OkxEnum import InstType
 
 
 class RESTMarketDataService(threading.Thread):
-    def __init__(self):
+    def __init__(self, is_paper_trading=IS_PAPER_TRADING):
         super().__init__()
-        self.market_api = MarketAPI(flag='0' if not IS_PAPER_TRADING else '1', debug=False)
+        self.market_api = MarketAPI(flag='0' if not is_paper_trading else '1', debug=False)
         if not tickers_container:
             tickers_container.append(Tickers())
 

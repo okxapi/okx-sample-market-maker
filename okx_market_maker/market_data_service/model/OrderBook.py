@@ -1,6 +1,6 @@
 from dataclasses import field, dataclass
 from typing import List
-import zlib
+import binascii
 
 
 @dataclass
@@ -33,8 +33,8 @@ class OrderBook:
     inst_id: str
     _bids: List[OrderBookLevel] = field(default_factory=lambda: list())
     _asks: List[OrderBookLevel] = field(default_factory=lambda: list())
-    level: int = 5
     timestamp: int = 0
+    exch_check_sum: int = 0
 
     def set_bids_on_snapshot(self, order_book_level_list: List[OrderBookLevel]):
         self._bids = sorted(order_book_level_list, reverse=True)
@@ -56,7 +56,6 @@ class OrderBook:
                     else:
                         self._bids[i] = order_book_level
                     break
-            # self._bids = self._bids[:self.level]
 
     def set_asks_on_update(self, order_book_level: OrderBookLevel):
         if not self._asks or self._asks[-1] < order_book_level:
@@ -73,10 +72,11 @@ class OrderBook:
                         self._asks[i] = order_book_level
                     break
 
-            # self._asks = self._asks[:self.level]
-
     def set_timestamp(self, timestamp: int):
         self.timestamp = timestamp
+
+    def set_exch_check_sum(self, checksum: int):
+        self.exch_check_sum = checksum
 
     def _current_check_sum(self):
         bid_ask_string = ""
@@ -88,12 +88,18 @@ class OrderBook:
             if i + 1 >= 25:
                 break
         if bid_ask_string:
-            bid_ask_string = bid_ask_string[-1]
-        return zlib.crc32(bid_ask_string.encode())
+            bid_ask_string = bid_ask_string[:-1]
+        print(bid_ask_string)
+        crc = binascii.crc32(bid_ask_string.encode()) & 0xffffffff  # Calculate CRC32 as unsigned integer
+        crc_signed = crc if crc < 0x80000000 else crc - 0x100000000  # Convert to signed integer
+        return crc_signed
 
-    def do_check_sum(self, check_sum: int):
+    def do_check_sum(self) -> bool:
+        if not self.exch_check_sum:
+            return True  # ignore check sum
         current_crc = self._current_check_sum()
-        print(f"{current_crc=} {check_sum=}")
+        print(f"{current_crc=} {self.exch_check_sum=}")
+        return current_crc == self.exch_check_sum
 
     def _check_empty_array(self, order_book_array):
         if not order_book_array:

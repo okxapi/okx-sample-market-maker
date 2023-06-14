@@ -45,7 +45,7 @@ class RiskCalculator:
     def calc_instrument_asset_value(cls, position: Position, tickers: Tickers) -> Tuple[str, float, float]:
         inst_id = position.inst_id
         instrument = InstrumentUtil.get_instrument(inst_id)
-        asset_value_ccy = InstrumentUtil.get_asset_exposure_ccy(instrument)
+        asset_value_ccy = InstrumentUtil.get_asset_value_ccy(instrument)
         price_to_usdt = tickers.get_usdt_price_by_ccy(asset_value_ccy)
         if instrument.inst_type == InstType.SWAP or instrument.inst_type == InstType.FUTURES:
             asset_value = position.upl

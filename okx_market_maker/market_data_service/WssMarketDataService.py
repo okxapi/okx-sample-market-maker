@@ -1,3 +1,4 @@
+import threading
 from typing import Dict, List
 import time
 from okx_market_maker import order_books
@@ -6,12 +7,11 @@ from okx.websocket.WsPublic import WsPublic
 
 
 class WssMarketDataService(WsPublic):
-    def __init__(self, url, inst_id, level, channel="books5"):
+    def __init__(self, url, inst_id, channel="books5"):
         super().__init__(url)
         self.inst_id = inst_id
-        self.level = level
         self.channel = channel
-        order_books[self.inst_id] = OrderBook(inst_id=inst_id, level=level)
+        order_books[self.inst_id] = OrderBook(inst_id=inst_id)
         self.args = []
 
     def run_service(self):
@@ -133,12 +133,38 @@ def on_orderbook_snapshot_or_update(message):
                 )
     if data.get("ts"):
         order_books[inst_id].set_timestamp(int(data["ts"]))
+    if data.get("checksum"):
+        order_books[inst_id].set_exch_check_sum(data["checksum"])
+
+
+class ChecksumThread(threading.Thread):
+    def __init__(self, wss_mds: WssMarketDataService):
+        self.wss_mds = wss_mds
+        super().__init__()
+
+    def run(self) -> None:
+        while 1:
+            try:
+                for inst_id, order_book in order_books.items():
+                    order_book: OrderBook
+                    if order_book.do_check_sum():
+                        continue
+                    self.wss_mds.stop_service()
+                    time.sleep(3)
+                    self.wss_mds.run_service()
+                    break
+                time.sleep(5)
+            except KeyboardInterrupt:
+                break
 
 
 if __name__ == "__main__":
     # url = "wss://ws.okx.com:8443/ws/v5/public"
     url = "wss://ws.okx.com:8443/ws/v5/public?brokerId=9999"
-    market_data_service = WssMarketDataService(url=url, inst_id="BTC-USDT-SWAP", level=5)
+    market_data_service = WssMarketDataService(url=url, inst_id="BTC-USDT-SWAP", channel="books")
     market_data_service.start()
     market_data_service.run_service()
+    check_sum = ChecksumThread(market_data_service)
+    check_sum.start()
     time.sleep(30)
+
