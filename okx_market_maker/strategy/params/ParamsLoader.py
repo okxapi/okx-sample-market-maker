@@ -26,9 +26,3 @@ class ParamsLoader:
             if strategy_params is None:
                 return
         return strategy_params
-
-    def get_init_assets(self):
-        if not self._inited:
-            self.load_params()
-        init_assets = self.params.get("initial_assets")
-        return init_assets

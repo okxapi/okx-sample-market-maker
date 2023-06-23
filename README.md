@@ -22,9 +22,9 @@ This project is not related to the OKX Trading Bots features. To get access to m
 2. Open the project folder okx-sample-market-maker. Install the dependency by command ```pip install -r requirements.txt```. Creating a python virtual environment using ```virtualenv``` is strongly recommended.
 3. Switch to demo trading mode in your OKX account. Generate a DEMO Trading API key under demo trading mode. For the introduction to OKX demo trading environment, please refer to [How to Practice Trading Crypto on OKX](https://www.okx.com/learn/how-to-practice-trading-crypto-on-okx-with-demo-trading).
 4. Put your API key credentials into ```okx_market_market/settings.py```, in the section of  ```API_KEY```, ```API_SECRET_KEY```, and ```API_SECRET_KEY```. It is recommended to set ```IS_PAPER_TRADING```  as True.
-5. The ```TRADING_INSTRUMENT_ID``` in ```okx_market_market/settings.py``` by default is set as BTC-USDT-SWAP. If you want to trade on other symbol, feel free the change this field. To fetch the valid Instrument ID, please refer to [OKX Public API](https://www.okx.com/docs-v5/en/#rest-api-public-data-get-instruments).
-6. ```okx_market_market/params.yaml``` stores a set of strategy parameters that could be dynamic loaded during the strategy run-time. Make sure you review these parameters before hit the running button. Some parameters like ```single_order_size``` is instrument-related so will need users own judgement.
-7. HIT THE RUN BUTTON! Run the sample market maker by running the main script ```okx_market_market/run_sample_market_maker.py``` from your IDE or from command line. From the command line you can simply run ```python3 okx_market_market/run_sample_market_maker.py```.
+5. The ```TRADING_INSTRUMENT_ID``` in ```okx_market_market/settings.py``` by default is set as BTC-USDT-SWAP. If you want to trade on other symbol, feel free the change this field. To fetch the valid Instrument ID, please refer to [OKX Public API](https://www.okx.com/docs-v5/en/#rest-api-public-data-get-instruments). Some valid InstId examples from OKX: ```BTC-USDT / BTC-USDT-SWAP / BTC-USDT-230630 / BTC-USD-230623-22000-C```.
+6. ```okx_market_market/params.yaml``` stores a set of strategy parameters that could be dynamic loaded during the strategy run-time. Make sure you review these parameters before hit the running button. Some parameters like ```single_size_as_multiple_of_lot_size``` is instrument-related so will need users own judgement.
+7. HIT THE RUN BUTTON! Run the sample market maker by running the main script ```okx_market_market/run_sample_market_maker.py``` from your IDE or from command line. From the command line you can simply run ```python3 -m okx_market_market.run_sample_market_maker```.
 
 ### Output
 ```PLACE ORDER limit buy BTC-USDT-SWAP 2.0 @ 26441.4
@@ -37,9 +37,16 @@ PLACE ORDER limit sell BTC-USDT-SWAP 2.0 @ 26521.0
 PLACE ORDER limit sell BTC-USDT-SWAP 2.0 @ 26547.5
 PLACE ORDER limit sell BTC-USDT-SWAP 2.0 @ 26573.9
 PLACE ORDER limit sell BTC-USDT-SWAP 2.0 @ 26600.4
-===========  Strategy Summary  ==============
-StrategyMeasurement(net_filled_qty=0, buy_filled_qty=0, sell_filled_qty=0, trading_volume=0)
-RiskSnapShot(timestamp=1686295200410, asset_usdt_value=71419.53896952674, price_to_usdt_snapshot={'BTC': 26473.95, 'ETH': 1834.585, 'OKB': 44.825, 'JFI': 39.254999999999995, 'USDC': 0.99995, 'USDK': 0, 'TUSD': 0.668425, 'PAX': 0.8250500000000001, 'USDT': 1, 'UNI': 4.5825, 'LTC': 87.465, 'TRX': 0.07739499999999999, 'ADA': 0.31515}, asset_cash_snapshot={'BTC': 1.0010389610816628, 'ETH': 4.590149026394265, 'OKB': 100.0, 'JFI': 100.0, 'USDC': 3000.0, 'USDK': 3000.0, 'TUSD': 3000.0, 'PAX': 3000.0, 'USDT': 2684.1423424698123, 'UNI': 500.0, 'LTC': 10.0, 'TRX': 10000.0, 'ADA': 1000.0}, asset_loan_snapshot={}, asset_instrument_value_snapshot={'BTC-USDT-SWAP|net:BTC': 0.5163433364398406}, delta_usdt_value=51192.25860531541, delta_instrument_snapshot={'BTC-USDT-SWAP|net:BTC': -0.033})
+==== Risk Summary ====
+Time: 2023-06-23 15:37:53
+Inception: 2023-06-23 15:37:21
+P&L since inception(USDT): 10.89
+Trading Instrument: BTC-USDT-SWAP
+Trading Instrument Exposure (BTC): -0.0060
+Trading Instrument Exposure (USDT): -179.91
+Net Traded Position: -6
+Net Trading Volume: 18
+==== End of Summary ====
 AMEND ORDER orderaFZBngCqMjsxVHjDtD2TBC with new size 0 or new price 26444.7, req_id is amend9J9HQCeQbuCrRRDS4LLzpk
 AMEND ORDER order7edCnqJf8LSaASr7aUF8Ep with new size 0 or new price 26418.2, req_id is amendhqggfxytoEgwZWRmGN4otE
 AMEND ORDER orderSp6zyec6vk6reducoebAw8 with new size 0 or new price 26391.7, req_id is amendYnBrazuLpuzScAA4hcHkFd

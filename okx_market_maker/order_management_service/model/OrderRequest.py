@@ -8,9 +8,9 @@ class PlaceOrderRequest:
     td_mode: TdMode
     side: OrderSide
     ord_type: OrderType
-    size: float
+    size: str
     pos_side: PosSide = None
-    price: float = 0
+    price: str = ""
     client_order_id: str = ""
     tag: str = ""
     reduce_only: bool = False
@@ -34,8 +34,8 @@ class AmendOrderRequest:
     client_order_id: str = ""
     req_id: str = ""
     cxl_on_fail: bool = False
-    new_size: float = 0
-    new_price: float = 0
+    new_size: str = ""
+    new_price: str = ""
 
     def to_dict(self):
         return {'instId': self.inst_id, 'cxlOnFail': self.cxl_on_fail, 'ordId': self.order_id,

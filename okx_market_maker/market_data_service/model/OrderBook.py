@@ -89,7 +89,6 @@ class OrderBook:
                 break
         if bid_ask_string:
             bid_ask_string = bid_ask_string[:-1]
-        print(bid_ask_string)
         crc = binascii.crc32(bid_ask_string.encode()) & 0xffffffff  # Calculate CRC32 as unsigned integer
         crc_signed = crc if crc < 0x80000000 else crc - 0x100000000  # Convert to signed integer
         return crc_signed
@@ -98,7 +97,6 @@ class OrderBook:
         if not self.exch_check_sum:
             return True  # ignore check sum
         current_crc = self._current_check_sum()
-        print(f"{current_crc=} {self.exch_check_sum=}")
         return current_crc == self.exch_check_sum
 
     def _check_empty_array(self, order_book_array):

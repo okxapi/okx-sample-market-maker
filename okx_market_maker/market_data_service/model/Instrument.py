@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from okx_market_maker.utils.OkxEnum import InstType, OptType, CtType, InstState
-
+from decimal import Decimal
 
 @dataclass
 class Instrument:
@@ -20,9 +20,9 @@ class Instrument:
     list_time: int = 0
     exp_time: int = 0
 
-    tick_sz: float = 0
-    lot_sz: float = 0
-    min_sz: float = 0
+    tick_sz: Decimal = 0
+    lot_sz: Decimal = 0
+    min_sz: Decimal = 0
     ct_type: CtType = None
 
     state: InstState = None
@@ -46,9 +46,9 @@ class Instrument:
         instrument.list_time = int(json_response["listTime"]) if json_response.get("listTime") else 0
         instrument.exp_time = int(json_response["expTime"]) if json_response.get("expTime") else 0
 
-        instrument.tick_sz = float(json_response["tickSz"]) if json_response.get("tickSz") else 0
-        instrument.lot_sz = float(json_response["lotSz"]) if json_response.get("lotSz") else 0
-        instrument.min_sz = float(json_response["minSz"]) if json_response.get("minSz") else 0
+        instrument.tick_sz = Decimal(json_response["tickSz"]) if json_response.get("tickSz") else Decimal('0')
+        instrument.lot_sz = Decimal(json_response["lotSz"]) if json_response.get("lotSz") else Decimal('0')
+        instrument.min_sz = Decimal(json_response["minSz"]) if json_response.get("minSz") else Decimal('0')
         instrument.ct_type = CtType(json_response["ctType"]) if json_response.get("ctType") else None
 
         instrument.state = InstState(json_response["state"]) if json_response.get("state") else None

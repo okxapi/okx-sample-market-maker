@@ -1,21 +1,7 @@
 strategy:
   step_pct: 0.00005
   num_of_order_each_side: 5
-  single_order_size: 2
+  single_size_as_multiple_of_lot_size: 2
   price_integration: 10
   maximum_net_buy: 20
   maximum_net_sell: 20
-initial_assets:
-  BTC: 1.000
-  ETH: 5.000
-  USDT: 20000
-  USDC: 3000
-  USDK: 3000
-  TUSD: 3000
-  PAX: 3000
-  UNI: 500
-  LTC: 10
-  TRX: 10000
-  ADA: 1000
-  JFI: 100
-  OKB: 100
