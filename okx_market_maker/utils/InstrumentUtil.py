@@ -1,4 +1,5 @@
 import math
+from decimal import Decimal
 
 from okx.PublicData import PublicAPI
 
@@ -8,6 +9,11 @@ from okx_market_maker.utils.OkxEnum import InstType, OrderSide, InstState
 from okx_market_maker.market_data_service.model.Instrument import Instrument
 
 
+INST_ID_SUGGESTION = "valid instId examples:\n"\
+                     "SPOT: BTC-USDT, SWAP: BTC-USDT-SWAP, FUTURES: BTC_USDT-230630, "\
+                     f"OPTION: BTC-USDT-230630-30000-C."
+
+
 class InstrumentUtil:
     public_api = PublicAPI(flag='0' if not IS_PAPER_TRADING else '1')
 
@@ -15,7 +21,7 @@ class InstrumentUtil:
     def get_inst_type_from_inst_id(cls, inst_id: str) -> InstType:
         inst_id_parts = inst_id.split("-")
         if len(inst_id_parts) < 2 or len(inst_id_parts) > 5 or len(inst_id_parts) == 4:
-            raise ValueError(f"Invalid InstId {inst_id}")
+            raise ValueError(f"Invalid InstId {inst_id}, {INST_ID_SUGGESTION}")
         if len(inst_id_parts) == 2:
             return InstType.SPOT
         if len(inst_id_parts) == 3:
@@ -36,7 +42,7 @@ class InstrumentUtil:
             uly = inst_id.split('-')[0] + '-' + inst_id.split('-')[1]
         inst_result = cls.public_api.get_instruments(instType=inst_type.value, instId=inst_id, uly=uly)
         if inst_result.get("code") != '0':
-            raise ValueError(f"{inst_id} inst not exists in OKX: {inst_result}")
+            raise ValueError(f"{inst_id} inst not exists in OKX: {inst_result}, {INST_ID_SUGGESTION}")
         data = inst_result["data"]
         json_response = data[0]
         instrument = Instrument.init_from_json(json_response)
@@ -46,15 +52,15 @@ class InstrumentUtil:
         return instrument
 
     @classmethod
-    def price_trim_by_tick_sz(cls, price: float, side: OrderSide, instrument: Instrument) -> float:
+    def price_trim_by_tick_sz(cls, price: float, side: OrderSide, instrument: Instrument) -> str:
         if side == OrderSide.BUY:
-            return math.floor(price / instrument.tick_sz) * instrument.tick_sz
+            return (math.floor(Decimal(str(price)) / instrument.tick_sz) * instrument.tick_sz).to_eng_string()
         else:
-            return math.ceil(price / instrument.tick_sz) * instrument.tick_sz
+            return (math.ceil(Decimal(str(price)) / instrument.tick_sz) * instrument.tick_sz).to_eng_string()
 
     @classmethod
-    def quantity_trim_by_lot_sz(cls, quantity: float, instrument: Instrument) -> float:
-        return round(quantity / instrument.lot_sz) * instrument.lot_sz
+    def quantity_trim_by_lot_sz(cls, quantity: float, instrument: Instrument) -> str:
+        return (round(Decimal(str(quantity)) / instrument.lot_sz) * instrument.lot_sz).to_eng_string()
 
     @classmethod
     def get_asset_value_ccy(cls, instrument: Instrument) -> str:

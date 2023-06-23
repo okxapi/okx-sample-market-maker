@@ -21,14 +21,14 @@ class StrategyOrder:
     inst_id: str
     side: OrderSide
     ord_type: OrderType
-    size: float
-    price: float = 0
+    size: str
+    price: str = ""
     client_order_id: str = ""
     order_id: str = ""
     strategy_order_status: StrategyOrderStatus = StrategyOrderStatus.SENT
     tgt_ccy: str = ""
     amend_req_id: str = ""
-    filled_size: float = 0
+    filled_size: str = "0"
     avg_fill_price: float = 0
 
     def __eq__(self, other):

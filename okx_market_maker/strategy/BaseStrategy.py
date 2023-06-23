@@ -1,6 +1,7 @@
 import time
 import traceback
 from abc import ABC, abstractmethod
+from decimal import Decimal
 from typing import List, Dict, Tuple
 import logging
 
@@ -13,6 +14,7 @@ from okx_market_maker.utils.InstrumentUtil import InstrumentUtil
 from okx_market_maker.order_management_service.model.OrderRequest import PlaceOrderRequest, \
     AmendOrderRequest, CancelOrderRequest
 from okx.Trade import TradeAPI
+from okx.Account import AccountAPI
 from okx_market_maker.settings import *
 from okx_market_maker import orders_container, order_books, account_container, positions_container, tickers_container
 from okx_market_maker.strategy.model.StrategyOrder import StrategyOrder, StrategyOrderStatus
@@ -25,20 +27,25 @@ from okx_market_maker.market_data_service.WssMarketDataService import WssMarketD
 from okx_market_maker.order_management_service.WssOrderManagementService import WssOrderManagementService
 from okx_market_maker.position_management_service.WssPositionManagementService import WssPositionManagementService
 from okx_market_maker.market_data_service.RESTMarketDataService import RESTMarketDataService
+from okx_market_maker.utils.OkxEnum import AccountConfigMode, TdMode, InstType
 
 
 class BaseStrategy(ABC):
     trade_api: TradeAPI
     status_api: StatusAPI
+    account_api: AccountAPI
     instrument: Instrument
     _strategy_order_dict: Dict[str, StrategyOrder]
     _strategy_measurement: StrategyMeasurement
+    _account_mode: AccountConfigMode = None
 
     def __init__(self, api_key=API_KEY, api_key_secret=API_KEY_SECRET, api_passphrase=API_PASSPHRASE,
                  is_paper_trading: bool = IS_PAPER_TRADING):
         self.trade_api = TradeAPI(api_key=api_key, api_secret_key=api_key_secret, passphrase=api_passphrase,
                                   flag='0' if not is_paper_trading else '1', debug=False)
         self.status_api = StatusAPI(flag='0' if not is_paper_trading else '1', debug=False)
+        self.account_api = AccountAPI(api_key=api_key, api_secret_key=api_key_secret, passphrase=api_passphrase,
+                                      flag='0' if not is_paper_trading else '1', debug=False)
         self.mds = WssMarketDataService(
             url="wss://ws.okx.com:8443/ws/v5/public?brokerId=9999" if is_paper_trading
             else "wss://ws.okx.com:8443/ws/v5/public",
@@ -73,7 +80,7 @@ class BaseStrategy(ABC):
         for cid, strategy_order in self._strategy_order_dict.items():
             if strategy_order.side == OrderSide.BUY:
                 buy_orders.append(strategy_order)
-        return sorted(buy_orders, key=lambda x: x.price, reverse=True)
+        return sorted(buy_orders, key=lambda x: float(x.price), reverse=True)
 
     def get_ask_strategy_orders(self) -> List[StrategyOrder]:
         """
@@ -84,7 +91,7 @@ class BaseStrategy(ABC):
         for cid, strategy_order in self._strategy_order_dict.items():
             if strategy_order.side == OrderSide.SELL:
                 sell_orders.append(strategy_order)
-        return sorted(sell_orders, key=lambda x: x.price, reverse=False)
+        return sorted(sell_orders, key=lambda x: float(x.price), reverse=False)
 
     def place_orders(self, order_request_list: List[PlaceOrderRequest]):
         """
@@ -236,6 +243,24 @@ class BaseStrategy(ABC):
             to_cancel.append(cancel_req)
         self.cancel_orders(to_cancel)
 
+    def decide_td_mode(self, instrument: Instrument) -> TdMode:
+        """
+        TdMode could be customized by personal preference. But the basic rules are:
+        Trade mode
+        Margin mode cross & isolated
+        Non-Margin mode cash
+        1. For Spot symbol, using cross or isolated will generate a Margin Position after orders filled
+        2. For SWAP/FUTURES/OPTION, should only use cross or isolated.
+        param instrument: Instrument
+        :return: TdMode
+        """
+        if self._account_mode == AccountConfigMode.CASH:
+            return TdMode.CASH
+        if self._account_mode == AccountConfigMode.SINGLE_CCY_MARGIN:
+            return TdMode.CASH if instrument.inst_type == InstType.SPOT else TdMode.CROSS
+        else:
+            return TdMode.CROSS
+
     @staticmethod
     def get_order_book() -> OrderBook:
         """
@@ -311,7 +336,7 @@ class BaseStrategy(ABC):
                 order_not_found_in_cache[client_order_id] = strategy_order
             if exchange_order.state == OrderState.LIVE:
                 strategy_order.strategy_order_status = StrategyOrderStatus.LIVE
-            filled_size_from_update = exchange_order.fill_sz - strategy_order.filled_size
+            filled_size_from_update = Decimal(exchange_order.fill_sz) - Decimal(strategy_order.filled_size)
             side_flag = 1 if exchange_order.side == OrderSide.BUY else -1
             self._strategy_measurement.net_filled_qty += filled_size_from_update * side_flag
             self._strategy_measurement.trading_volume += filled_size_from_update
@@ -340,13 +365,11 @@ class BaseStrategy(ABC):
         return self._strategy_measurement
 
     def risk_summary(self):
-        print("===========  Strategy Summary  ==============")
-        print(self._strategy_measurement)
         account = self.get_account()
         positions = self.get_positions()
         tickers = tickers_container[0]
         risk_snapshot = RiskCalculator.generate_risk_snapshot(account, positions, tickers)
-        print(risk_snapshot)
+        self._strategy_measurement.consume_risk_snapshot(risk_snapshot)
 
     def check_status(self):
         status_response = self.status_api.status("ongoing")
@@ -354,6 +377,11 @@ class BaseStrategy(ABC):
             print(status_response.get("data"))
             return False
         return True
+
+    def _set_account_config(self):
+        account_config = self.account_api.get_account_config()
+        if account_config.get("code") == '0':
+            self._account_mode = AccountConfigMode(int(account_config.get("data")[0]['acctLv']))
 
     def _run_exchange_connection(self):
         self.mds.start()
@@ -365,6 +393,8 @@ class BaseStrategy(ABC):
         self.pms.run_service()
 
     def run(self):
+        InstrumentUtil.get_instrument(TRADING_INSTRUMENT_ID)
+        self._set_account_config()
         self._run_exchange_connection()
         while 1:
             try:
@@ -373,12 +403,12 @@ class BaseStrategy(ABC):
                     raise ValueError("There is a ongoing maintenance in OKX.")
                 self.get_params()
                 result = self._health_check()
+                self.risk_summary()
                 if not result:
-                    print(f"{result=}")
+                    print(f"Health Check result is {result}")
                     time.sleep(5)
                     continue
                 # summary
-                self.risk_summary()
                 self._update_strategy_order_status()
                 place_order_list, amend_order_list, cancel_order_list = self.order_operation_decision()
                 # print(place_order_list)
@@ -397,4 +427,3 @@ class BaseStrategy(ABC):
                 except:
                     print(f"Failed to cancel orders: {traceback.format_exc()}")
                 time.sleep(20)
-

@@ -91,3 +91,10 @@ class TdMode(Enum, metaclass=ListEnumMeta):
     CASH = "cash"
     ISOLATED = "isolated"
     CROSS = "cross"
+
+
+class AccountConfigMode(Enum, metaclass=ListEnumMeta):
+    CASH = 1
+    SINGLE_CCY_MARGIN = 2
+    MULTI_CCY_MARGIN = 3
+    PORTFOLIO_MARGIN = 4

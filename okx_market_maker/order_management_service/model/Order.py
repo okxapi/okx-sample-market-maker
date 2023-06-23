@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Dict, List
 from okx_market_maker.utils.OkxEnum import *
 
@@ -19,7 +20,7 @@ class Order:
     fill_fee_ccy: str = ""
     fill_notional_usd: float = 0
     fill_px: float = 0
-    fill_sz: float = 0
+    fill_sz: str = "0"
     fill_time: int = 0
     inst_id: str = ""
     inst_type: InstType = None
@@ -59,7 +60,7 @@ class Order:
         order.fill_notional_usd = float(json_response.get("fillNotionalUsd")) \
             if json_response.get("fillNotionalUsd") else 0
         order.fill_px = float(json_response.get("fillPx")) if json_response.get("fillPx") else 0
-        order.fill_sz = float(json_response.get("fillSz")) if json_response.get("fillSz") else 0
+        order.fill_sz = json_response.get("fillSz") if json_response.get("fillSz") else '0'
         order.fill_time = int(json_response.get("fillTime")) if json_response.get("fillTime") else 0
         order.inst_id = json_response.get("instId", "")
         order.inst_type = InstType(json_response["instType"])

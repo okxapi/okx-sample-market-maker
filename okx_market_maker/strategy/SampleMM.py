@@ -1,5 +1,6 @@
 import math
 import time
+from decimal import Decimal
 from typing import Tuple, List
 
 from okx_market_maker.market_data_service.model.Instrument import Instrument
@@ -31,9 +32,12 @@ class SampleMM(BaseStrategy):
             ask_level = order_book.bid_by_level(1)
         if ask_level and not bid_level:
             bid_level = order_book.ask_by_level(1)
+        instrument = InstrumentUtil.get_instrument(TRADING_INSTRUMENT_ID)
         step_pct = self.params_loader.get_strategy_params("step_pct")
         num_of_order_each_side = self.params_loader.get_strategy_params("num_of_order_each_side")
-        single_order_size = self.params_loader.get_strategy_params("single_order_size")
+        single_order_size = max(
+            self.params_loader.get_strategy_params("single_size_as_multiple_of_lot_size") * instrument.lot_sz,
+            instrument.min_sz)
         strategy_measurement = self.get_strategy_measurement()
         buy_num_of_order_each_side = num_of_order_each_side
         sell_num_of_order_each_side = num_of_order_each_side
@@ -49,7 +53,7 @@ class SampleMM(BaseStrategy):
                                for i in range(buy_num_of_order_each_side)]
         proposed_sell_orders = [(ask_level.price * (1 + step_pct * (i + 1)), single_order_size)
                                 for i in range(sell_num_of_order_each_side)]
-        instrument = InstrumentUtil.get_instrument(TRADING_INSTRUMENT_ID)
+
         proposed_buy_orders = [(InstrumentUtil.price_trim_by_tick_sz(price_qty[0], OrderSide.BUY, instrument),
                                 InstrumentUtil.quantity_trim_by_lot_sz(price_qty[1], instrument))
                                for price_qty in proposed_buy_orders]
@@ -58,8 +62,6 @@ class SampleMM(BaseStrategy):
                                 for price_qty in proposed_sell_orders]
         current_buy_orders = self.get_bid_strategy_orders()
         current_sell_orders = self.get_ask_strategy_orders()
-        # print(f"{proposed_buy_orders=} {current_buy_orders=}")
-        # print(f"{proposed_sell_orders=} {current_sell_orders=}")
 
         buy_to_place, buy_to_amend, buy_to_cancel = self.get_req(
             proposed_buy_orders, current_buy_orders, OrderSide.BUY, instrument)
@@ -67,7 +69,7 @@ class SampleMM(BaseStrategy):
             proposed_sell_orders, current_sell_orders, OrderSide.SELL, instrument)
         return buy_to_place + sell_to_place, buy_to_amend + sell_to_amend, buy_to_cancel + sell_to_cancel
 
-    def get_req(self, propose_orders: List[Tuple[float, float]],
+    def get_req(self, propose_orders: List[Tuple[str, str]],
                 current_orders: List[StrategyOrder], side: OrderSide, instrument: Instrument) -> \
             Tuple[List[PlaceOrderRequest], List[AmendOrderRequest], List[CancelOrderRequest]]:
         """
@@ -85,7 +87,8 @@ class SampleMM(BaseStrategy):
         to_cancel: List[CancelOrderRequest] = []
         for strategy_order in current_orders.copy():
             price = strategy_order.price
-            remaining_size = strategy_order.size - strategy_order.filled_size
+            remaining_size = float(strategy_order.size) - float(strategy_order.filled_size)
+            remaining_size = InstrumentUtil.quantity_trim_by_lot_sz(remaining_size, instrument)
             if (price, remaining_size) in propose_orders:
                 current_orders.remove(strategy_order)
                 propose_orders.remove((price, remaining_size))
@@ -112,30 +115,13 @@ class SampleMM(BaseStrategy):
             # to amend
             strategy_order = current_orders[i]
             new_price, new_size = propose_orders[i]
-            remaining_size = strategy_order.size - strategy_order.filled_size
+            remaining_size = (Decimal(strategy_order.size) - Decimal(strategy_order.filled_size)).to_eng_string()
             cid = strategy_order.client_order_id
             amend_req = AmendOrderRequest(strategy_order.inst_id, client_order_id=cid,
                                           req_id=get_request_uuid("amend"))
             if new_price != strategy_order.price:
                 amend_req.new_price = new_price
             if new_size != remaining_size:
-                amend_req.new_size = strategy_order.filled_size + new_size
+                amend_req.new_size = (Decimal(strategy_order.filled_size) + Decimal(new_size)).to_eng_string()
             to_amend.append(amend_req)
         return to_place, to_amend, to_cancel
-
-    @staticmethod
-    def decide_td_mode(instrument: Instrument) -> TdMode:
-        """
-        TdMode could be customized by personal preference. But the basic rules are:
-        Trade mode
-        Margin mode cross & isolated
-        Non-Margin mode cash
-        1. For Spot symbol, using cross or isolated will generate a Margin Position after orders filled
-        2. For SWAP/FUTURES/OPTION, should only use cross or isolated.
-        param instrument: Instrument
-        :return: TdMode
-        """
-        if instrument.inst_type == InstType.SPOT:
-            return TdMode.CASH
-        else:
-            return TdMode.CROSS
