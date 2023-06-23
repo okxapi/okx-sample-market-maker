@@ -50,11 +50,11 @@ Net Trading Volume: 18
 AMEND ORDER orderaFZBngCqMjsxVHjDtD2TBC with new size 0 or new price 26444.7, req_id is amend9J9HQCeQbuCrRRDS4LLzpk
 AMEND ORDER order7edCnqJf8LSaASr7aUF8Ep with new size 0 or new price 26418.2, req_id is amendhqggfxytoEgwZWRmGN4otE
 AMEND ORDER orderSp6zyec6vk6reducoebAw8 with new size 0 or new price 26391.7, req_id is amendYnBrazuLpuzScAA4hcHkFd
-AMEND ORDER order4xSjPPTyiCosUfX7M4dYcT with new size 0 or new price 26365.300000000003, req_id is amendaYCTkuci8VSUE4WqhCSuNt
-AMEND ORDER order68zeuyF56N4NH6FqKsnHbU with new size 0 or new price 26338.800000000003, req_id is amendhupm2b54yQm92qab3oGzcw
-AMEND ORDER orderL4mncCFYWPCagUEYQkxeuQ with new size 0 or new price 26497.800000000003, req_id is amendgEYsEvmbYt6yMVHsLNXs3X
-AMEND ORDER orderTFLxbR9tTPLU8kE4HXxJ5w with new size 0 or new price 26524.300000000003, req_id is amend2AjcdkrPvbKWBSfnLr89Xx
-AMEND ORDER orderVrGqNDiF2fiAj6J2Nedv4J with new size 0 or new price 26550.800000000003, req_id is amendTPLgHMPj25vfoh3kSaqdfB
+AMEND ORDER order4xSjPPTyiCosUfX7M4dYcT with new size 0 or new price 26365.3, req_id is amendaYCTkuci8VSUE4WqhCSuNt
+AMEND ORDER order68zeuyF56N4NH6FqKsnHbU with new size 0 or new price 26338.8, req_id is amendhupm2b54yQm92qab3oGzcw
+AMEND ORDER orderL4mncCFYWPCagUEYQkxeuQ with new size 0 or new price 26497.8, req_id is amendgEYsEvmbYt6yMVHsLNXs3X
+AMEND ORDER orderTFLxbR9tTPLU8kE4HXxJ5w with new size 0 or new price 26524.3, req_id is amend2AjcdkrPvbKWBSfnLr89Xx
+AMEND ORDER orderVrGqNDiF2fiAj6J2Nedv4J with new size 0 or new price 26550.8, req_id is amendTPLgHMPj25vfoh3kSaqdfB
 AMEND ORDER ordermFnP2ZKhhkeK8YBw4M35cT with new size 0 or new price 26577.2, req_id is amendU5HC3greWaN6HqGvfQgLNN
 AMEND ORDER orderEY4tUgAFzYtqea4qTbbTdC with new size 0 or new price 26603.7, req_id is amendJsqVtyBMp6pfsrrsR79kch
 ...
