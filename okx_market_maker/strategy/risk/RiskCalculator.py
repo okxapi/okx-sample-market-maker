@@ -2,7 +2,7 @@ import time
 from typing import Tuple
 
 from okx_market_maker.settings import RISK_FREE_CCY_LIST
-from okx_market_maker.strategy.risk.RiskSnapshot import RiskSnapShot
+from okx_market_maker.strategy.risk.RiskSnapshot import RiskSnapShot, AssetValueInst
 from okx_market_maker.position_management_service.model.Positions import Positions, Position
 from okx_market_maker.position_management_service.model.Account import Account
 from okx_market_maker.market_data_service.model.Tickers import Tickers
@@ -31,6 +31,7 @@ class RiskCalculator:
             risk_snapshot.asset_usdt_value += inst_value_usdt
             risk_snapshot.asset_instrument_value_snapshot[
                 f"{position.inst_id}|{position.pos_side.value}:{inst_value_ccy}"] = inst_value
+            risk_snapshot.mark_px_instrument_snapshot[inst_value.instrument.inst_id] = inst_value.mark_px
             if inst_value_ccy not in risk_snapshot.price_to_usdt_snapshot:
                 risk_snapshot.price_to_usdt_snapshot[inst_value_ccy] = tickers.get_usdt_price_by_ccy(inst_value_ccy)
             risk_snapshot.delta_usdt_value += inst_expo_value_usdt
@@ -42,18 +43,21 @@ class RiskCalculator:
         return risk_snapshot
 
     @classmethod
-    def calc_instrument_asset_value(cls, position: Position, tickers: Tickers) -> Tuple[str, float, float]:
+    def calc_instrument_asset_value(cls, position: Position, tickers: Tickers) -> Tuple[str, AssetValueInst, float]:
         inst_id = position.inst_id
         instrument = InstrumentUtil.get_instrument(inst_id)
         asset_value_ccy = InstrumentUtil.get_asset_value_ccy(instrument)
         price_to_usdt = tickers.get_usdt_price_by_ccy(asset_value_ccy)
         if instrument.inst_type == InstType.SWAP or instrument.inst_type == InstType.FUTURES:
             asset_value = position.upl
-            return asset_value_ccy, asset_value, asset_value * price_to_usdt
+            asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value,
+                                              pos=position.pos, mark_px=position.mark_px, avg_px=position.avg_px)
+            return asset_value_ccy, asset_value_inst, asset_value * price_to_usdt
         if instrument.inst_type == InstType.OPTION:
             asset_value = position.opt_val
-            return asset_value_ccy, asset_value, asset_value * price_to_usdt
-        return "USDT", 0, 0
+            asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value,
+                                              pos=position.pos, mark_px=position.mark_px)
+            return asset_value_ccy, asset_value_inst, asset_value * price_to_usdt
 
     @classmethod
     def calc_instrument_delta(cls, position: Position, tickers: Tickers) -> Tuple[str, float, float]:

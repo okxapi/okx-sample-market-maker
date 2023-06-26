@@ -70,7 +70,7 @@ class Order:
         order.ord_type = OrderType(json_response["ordType"])
         order.pnl = float(json_response.get("pnl", 0))
         order.pos_side = PosSide(json_response["posSide"]) if json_response.get("posSide") else None
-        order.px = float(json_response.get("px", 0))
+        order.px = float(json_response.get("px", 0)) if json_response.get("px") else 0
         order.rebate = float(json_response.get("rebate", 0))
         order.rebate_ccy = json_response.get("rebateCcy", "")
         order.reduce_only = True if json_response.get("reduceOnly") == "true" else False

@@ -2,6 +2,7 @@
 order_books = {}
 instruments = {}
 tickers_container = []
+mark_px_container = []
 
 # pms
 balance_and_position_container = []
