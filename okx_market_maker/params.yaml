@@ -1,7 +1,7 @@
 strategy:
   step_pct: 0.001
   num_of_order_each_side: 5
-  single_size_as_multiple_of_lot_size: 20
+  single_size_as_multiple_of_lot_size: 2
   price_integration: 10
   maximum_net_buy: 20
   maximum_net_sell: 20
