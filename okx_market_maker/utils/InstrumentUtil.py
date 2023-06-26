@@ -7,6 +7,7 @@ from okx_market_maker import instruments
 from okx_market_maker.settings import IS_PAPER_TRADING
 from okx_market_maker.utils.OkxEnum import InstType, OrderSide, InstState
 from okx_market_maker.market_data_service.model.Instrument import Instrument
+from okx_market_maker import mark_px_container
 
 
 INST_ID_SUGGESTION = "valid instId examples:\n"\
@@ -69,3 +70,13 @@ class InstrumentUtil:
     @classmethod
     def get_asset_exposure_ccy(cls, instrument: Instrument) -> str:
         return instrument.inst_id.split("-")[0]
+
+    @classmethod
+    def get_instrument_mark_px(cls, inst_id: str) -> float:
+        if not mark_px_container:
+            return 0
+        mark_px_cache = mark_px_container[0]
+        mark_px = mark_px_cache.get_mark_px(inst_id)
+        if not mark_px:
+            return 0
+        return mark_px.mark_px

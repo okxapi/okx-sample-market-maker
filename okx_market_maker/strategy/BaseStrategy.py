@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from decimal import Decimal
 from typing import List, Dict, Tuple
 import logging
+from copy import deepcopy
 
 from okx.Status import StatusAPI
 from okx_market_maker.market_data_service.model.Instrument import Instrument, InstState
@@ -298,7 +299,7 @@ class BaseStrategy(ABC):
         if not orders_container:
             raise ValueError(f"order information not ready in orders cache!")
         orders: Orders = orders_container[0]
-        return orders
+        return deepcopy(orders)
 
     def _health_check(self) -> bool:
         try:
