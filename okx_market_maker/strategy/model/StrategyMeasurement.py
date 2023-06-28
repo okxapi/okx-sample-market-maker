@@ -111,13 +111,13 @@ class StrategyMeasurement:
         if instrument.inst_type in [InstType.SWAP, InstType.FUTURES]:
             if instrument.ct_type == CtType.LINEAR:
                 return asset_value_inst.pos * instrument.ct_mul * instrument.ct_val \
-                       * (current_mark_px - asset_value_inst.avg_px)
+                       * (current_mark_px - asset_value_inst.avg_px) + asset_value_inst.margin
             if instrument.ct_type == CtType.INVERSE:
                 return asset_value_inst.pos * instrument.ct_mul * instrument.ct_val \
-                       * (1 / asset_value_inst.avg_px - 1 / current_mark_px)
+                       * (1 / asset_value_inst.avg_px - 1 / current_mark_px) + asset_value_inst.margin
         if instrument.inst_type in [InstType.OPTION]:
             return asset_value_inst.pos * instrument.ct_mul * instrument.ct_val \
-                   * current_mark_px
+                   * current_mark_px + asset_value_inst.margin
         return 0.0
 
     def consume_risk_snapshot(self, risk_snapshot: RiskSnapShot):

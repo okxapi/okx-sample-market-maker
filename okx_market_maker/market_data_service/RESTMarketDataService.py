@@ -30,6 +30,8 @@ class RESTMarketDataService(threading.Thread):
                 tickers: Tickers = tickers_container[0]
                 tickers.update_from_json(json_response)
                 mark_px_cache: MarkPxCache = mark_px_container[0]
+                json_response = self.public_api.get_mark_price(instType=InstType.MARGIN.value)
+                mark_px_cache.update_from_json(json_response)
                 json_response = self.public_api.get_mark_price(instType=InstType.SWAP.value)
                 mark_px_cache.update_from_json(json_response)
                 json_response = self.public_api.get_mark_price(instType=InstType.FUTURES.value)

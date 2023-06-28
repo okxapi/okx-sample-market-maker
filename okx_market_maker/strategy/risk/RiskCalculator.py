@@ -30,13 +30,14 @@ class RiskCalculator:
             inst_expo_ccy, inst_expo_value, inst_expo_value_usdt = cls.calc_instrument_delta(position, tickers)
             risk_snapshot.asset_usdt_value += inst_value_usdt
             risk_snapshot.asset_instrument_value_snapshot[
-                f"{position.inst_id}|{position.pos_side.value}:{inst_value_ccy}"] = inst_value
+                f"{position.inst_id}|{position.mgn_mode.value}|{position.pos_side.value}:{inst_value_ccy}"] = inst_value
             risk_snapshot.mark_px_instrument_snapshot[inst_value.instrument.inst_id] = inst_value.mark_px
             if inst_value_ccy not in risk_snapshot.price_to_usdt_snapshot:
                 risk_snapshot.price_to_usdt_snapshot[inst_value_ccy] = tickers.get_usdt_price_by_ccy(inst_value_ccy)
             risk_snapshot.delta_usdt_value += inst_expo_value_usdt
             risk_snapshot.delta_instrument_snapshot[
-                f"{position.inst_id}|{position.pos_side.value}:{inst_expo_ccy}"] = inst_expo_value
+                f"{position.inst_id}|{position.mgn_mode.value}|{position.pos_side.value}:{inst_expo_ccy}"] = \
+                inst_expo_value
             if inst_expo_ccy not in risk_snapshot.price_to_usdt_snapshot:
                 risk_snapshot.price_to_usdt_snapshot[inst_expo_ccy] = tickers.get_usdt_price_by_ccy(inst_expo_ccy)
         risk_snapshot.timestamp = int(time.time() * 1000)
@@ -54,18 +55,18 @@ class RiskCalculator:
         price_to_usdt = tickers.get_usdt_price_by_ccy(asset_value_ccy)
         if instrument.inst_type == InstType.MARGIN:
             asset_value = position.upl + position.margin
-            asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value,
+            asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value, margin=position.margin,
                                               pos=position.pos, mark_px=position.mark_px, avg_px=position.avg_px,
                                               liability=position.liability, pos_ccy=position.pos_ccy, ccy=position.ccy)
             return asset_value_ccy, asset_value_inst, asset_value * price_to_usdt
         if instrument.inst_type == InstType.SWAP or instrument.inst_type == InstType.FUTURES:
-            asset_value = position.upl
-            asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value,
+            asset_value = position.upl + position.margin
+            asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value, margin=position.margin,
                                               pos=position.pos, mark_px=position.mark_px, avg_px=position.avg_px)
             return asset_value_ccy, asset_value_inst, asset_value * price_to_usdt
         if instrument.inst_type == InstType.OPTION:
-            asset_value = position.opt_val
-            asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value,
+            asset_value = position.opt_val + position.margin
+            asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value, margin=position.margin,
                                               pos=position.pos, mark_px=position.mark_px)
             return asset_value_ccy, asset_value_inst, asset_value * price_to_usdt
 

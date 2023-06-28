@@ -58,9 +58,11 @@ def _callback(message):
         on_balance_and_position(message)
         # print(balance_and_position_container)
     if arg.get("channel") == "account":
+        # print(message)
         on_account(message)
         # print(account_container)
     if arg.get("channel") == "positions":
+        # print(message)
         on_position(message)
         # print(positions_container)
 
