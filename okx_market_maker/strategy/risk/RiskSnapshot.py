@@ -14,6 +14,7 @@ class AssetValueInst:
     liability: float = 0
     pos_ccy: str = ""
     ccy: str = ""
+    margin: float = 0
 
 
 @dataclass
