@@ -22,9 +22,32 @@ This project is not related to the OKX Trading Bots features. To get access to m
 2. Open the project folder okx-sample-market-maker. Install the dependency by command ```pip install -r requirements.txt```. Creating a python virtual environment using ```virtualenv``` is strongly recommended.
 3. Switch to demo trading mode in your OKX account. Generate a DEMO Trading API key under demo trading mode. For the introduction to OKX demo trading environment, please refer to [How to Practice Trading Crypto on OKX](https://www.okx.com/learn/how-to-practice-trading-crypto-on-okx-with-demo-trading).
 4. Put your API key credentials into ```okx_market_market/settings.py```, in the section of  ```API_KEY```, ```API_SECRET_KEY```, and ```API_SECRET_KEY```. It is recommended to set ```IS_PAPER_TRADING```  as True.
-5. The ```TRADING_INSTRUMENT_ID``` in ```okx_market_market/settings.py``` by default is set as BTC-USDT-SWAP. If you want to trade on other symbol, feel free the change this field. To fetch the valid Instrument ID, please refer to [OKX Public API](https://www.okx.com/docs-v5/en/#rest-api-public-data-get-instruments). Some valid InstId examples from OKX: ```BTC-USDT / BTC-USDT-SWAP / BTC-USDT-230630 / BTC-USD-230623-22000-C```.
+5. The ```TRADING_INSTRUMENT_ID``` in ```okx_market_market/settings.py``` by default is set as *BTC-USDT-SWAP* with ```TRADING_MODE``` as *cross*. If you want to trade on other symbol, feel free the change this field. To fetch the valid Instrument ID, please refer to [OKX Public API](https://www.okx.com/docs-v5/en/#rest-api-public-data-get-instruments). Some valid InstId examples from OKX: ```BTC-USDT / BTC-USDT-SWAP / BTC-USDT-230630 / BTC-USD-230623-22000-C```. For the selection of Trading Mode (cash/isolated/cross), please refer to *Trading Instrument & Trading Mode* section below.
 6. ```okx_market_market/params.yaml``` stores a set of strategy parameters that could be dynamic loaded during the strategy run-time. Make sure you review these parameters before hit the running button. Some parameters like ```single_size_as_multiple_of_lot_size``` is instrument-related so will need users own judgement.
 7. HIT THE RUN BUTTON! Run the sample market maker by running the main script ```okx_market_market/run_sample_market_maker.py``` from your IDE or from command line. From the command line you can simply run ```python3 -m okx_market_market.run_sample_market_maker```.
+
+
+### Trading Instrument & Trading Mode
+```Trade Mode, when placing an order, you need to specify the trade mode.
+Non-margined:
+- SPOT and OPTION buyer: cash
+Single-currency margin account:
+- Isolated MARGIN: isolated
+- Cross MARGIN: cross
+- SPOT: cash
+- Cross FUTURES/SWAP/OPTION: cross
+- Isolated FUTURES/SWAP/OPTION: isolated
+Multi-currency margin account:
+- Isolated MARGIN: isolated
+- Cross SPOT: cross
+- Cross FUTURES/SWAP/OPTION: cross
+- Isolated FUTURES/SWAP/OPTION: isolated
+Portfolio margin:
+- Isolated MARGIN: isolated
+- Cross SPOT: cross
+- Cross FUTURES/SWAP/OPTION: cross
+- Isolated FUTURES/SWAP/OPTION: isolated
+```
 
 ### Output
 ```PLACE ORDER limit buy BTC-USDT-SWAP 2.0 @ 26441.4
@@ -42,7 +65,7 @@ Time: 2023-06-23 15:37:53
 Inception: 2023-06-23 15:37:21
 P&L since inception(USDT): 10.89
 Asset Value Change since inception(USDT): -51.25
-Trading Instrument: BTC-USDT-SWAP
+Trading Instrument: BTC-USDT-SWAP (SWAP)
 Trading Instrument Exposure (BTC): -0.0060
 Trading Instrument Exposure (USDT): -179.91
 Net Traded Position: -6

@@ -29,6 +29,7 @@ from okx_market_maker.order_management_service.WssOrderManagementService import 
 from okx_market_maker.position_management_service.WssPositionManagementService import WssPositionManagementService
 from okx_market_maker.market_data_service.RESTMarketDataService import RESTMarketDataService
 from okx_market_maker.utils.OkxEnum import AccountConfigMode, TdMode, InstType
+from okx_market_maker.utils.TdModeUtil import TdModeUtil
 
 
 class BaseStrategy(ABC):
@@ -36,6 +37,7 @@ class BaseStrategy(ABC):
     status_api: StatusAPI
     account_api: AccountAPI
     instrument: Instrument
+    trading_instrument_type: InstType
     _strategy_order_dict: Dict[str, StrategyOrder]
     _strategy_measurement: StrategyMeasurement
     _account_mode: AccountConfigMode = None
@@ -61,7 +63,6 @@ class BaseStrategy(ABC):
             url="wss://ws.okx.com:8443/ws/v5/private?brokerId=9999" if is_paper_trading
             else "wss://ws.okx.com:8443/ws/v5/private")
         self._strategy_order_dict = dict()
-        self._strategy_measurement = StrategyMeasurement()
         self.params_loader = ParamsLoader()
 
     @abstractmethod
@@ -255,12 +256,7 @@ class BaseStrategy(ABC):
         param instrument: Instrument
         :return: TdMode
         """
-        if self._account_mode == AccountConfigMode.CASH:
-            return TdMode.CASH
-        if self._account_mode == AccountConfigMode.SINGLE_CCY_MARGIN:
-            return TdMode.CASH if instrument.inst_type == InstType.SPOT else TdMode.CROSS
-        else:
-            return TdMode.CROSS
+        return TdModeUtil.decide_trading_mode(self._account_mode, instrument.inst_type, TRADING_MODE)
 
     @staticmethod
     def get_order_book() -> OrderBook:
@@ -393,9 +389,31 @@ class BaseStrategy(ABC):
         self.oms.run_service()
         self.pms.run_service()
 
+    def trading_instrument_type(self) -> InstType:
+        guessed_inst_type = InstrumentUtil.get_inst_type_from_inst_id(TRADING_INSTRUMENT_ID)
+        if guessed_inst_type == InstType.SPOT:
+            if self._account_mode == AccountConfigMode.CASH:
+                return InstType.SPOT
+            if self._account_mode == AccountConfigMode.SINGLE_CCY_MARGIN:
+                if TRADING_MODE == TdMode.CASH.value:
+                    return InstType.SPOT
+                return InstType.MARGIN
+            if self._account_mode in [AccountConfigMode.MULTI_CCY_MARGIN, AccountConfigMode.PORTFOLIO_MARGIN]:
+                if TRADING_MODE == TdMode.ISOLATED.value:
+                    return InstType.MARGIN
+                return InstType.SPOT
+        return guessed_inst_type
+
+    def set_strategy_measurement(self, trading_instrument, trading_instrument_type: InstType):
+        self._strategy_measurement = StrategyMeasurement(trading_instrument=trading_instrument,
+                                                         trading_instrument_type=trading_instrument_type)
+
     def run(self):
-        InstrumentUtil.get_instrument(TRADING_INSTRUMENT_ID)
         self._set_account_config()
+        self.trading_instrument_type = self.trading_instrument_type()
+        InstrumentUtil.get_instrument(TRADING_INSTRUMENT_ID, self.trading_instrument_type)
+        self.set_strategy_measurement(trading_instrument=TRADING_INSTRUMENT_ID,
+                                      trading_instrument_type=self.trading_instrument_type)
         self._run_exchange_connection()
         while 1:
             try:

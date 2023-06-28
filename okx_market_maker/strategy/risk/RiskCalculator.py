@@ -45,9 +45,19 @@ class RiskCalculator:
     @classmethod
     def calc_instrument_asset_value(cls, position: Position, tickers: Tickers) -> Tuple[str, AssetValueInst, float]:
         inst_id = position.inst_id
-        instrument = InstrumentUtil.get_instrument(inst_id)
-        asset_value_ccy = InstrumentUtil.get_asset_value_ccy(instrument)
+        guessed_inst_type = InstrumentUtil.get_inst_type_from_inst_id(inst_id)
+        if guessed_inst_type == InstType.SPOT:
+            instrument = InstrumentUtil.get_instrument(inst_id, query_inst_type=InstType.MARGIN)
+        else:
+            instrument = InstrumentUtil.get_instrument(inst_id)
+        asset_value_ccy = InstrumentUtil.get_asset_value_ccy(instrument, position)
         price_to_usdt = tickers.get_usdt_price_by_ccy(asset_value_ccy)
+        if instrument.inst_type == InstType.MARGIN:
+            asset_value = position.upl + position.margin
+            asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value,
+                                              pos=position.pos, mark_px=position.mark_px, avg_px=position.avg_px,
+                                              liability=position.liability, pos_ccy=position.pos_ccy, ccy=position.ccy)
+            return asset_value_ccy, asset_value_inst, asset_value * price_to_usdt
         if instrument.inst_type == InstType.SWAP or instrument.inst_type == InstType.FUTURES:
             asset_value = position.upl
             asset_value_inst = AssetValueInst(instrument=instrument, asset_value=asset_value,
@@ -62,9 +72,16 @@ class RiskCalculator:
     @classmethod
     def calc_instrument_delta(cls, position: Position, tickers: Tickers) -> Tuple[str, float, float]:
         inst_id = position.inst_id
-        instrument = InstrumentUtil.get_instrument(inst_id)
+        guessed_inst_type = InstrumentUtil.get_inst_type_from_inst_id(inst_id)
+        if guessed_inst_type == InstType.SPOT:
+            instrument = InstrumentUtil.get_instrument(inst_id, query_inst_type=InstType.MARGIN)
+        else:
+            instrument = InstrumentUtil.get_instrument(inst_id)
         exposure_ccy = InstrumentUtil.get_asset_exposure_ccy(instrument)
         price_to_usdt = tickers.get_usdt_price_by_ccy(exposure_ccy)
+        if instrument.inst_type == InstType.MARGIN:
+            ccy_exposure = position.pos
+            return exposure_ccy, ccy_exposure, ccy_exposure * price_to_usdt
         if instrument.inst_type == InstType.SWAP or instrument.inst_type == InstType.FUTURES:
             if instrument.ct_type == CtType.LINEAR:
                 ccy_exposure = position.pos * instrument.ct_mul * instrument.ct_val

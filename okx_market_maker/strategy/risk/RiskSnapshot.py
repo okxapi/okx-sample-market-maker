@@ -11,6 +11,9 @@ class AssetValueInst:
     pos: float = 0
     mark_px: float = 0
     avg_px: float = 0
+    liability: float = 0
+    pos_ccy: str = ""
+    ccy: str = ""
 
 
 @dataclass

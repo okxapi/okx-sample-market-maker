@@ -32,7 +32,7 @@ class SampleMM(BaseStrategy):
             ask_level = order_book.bid_by_level(1)
         if ask_level and not bid_level:
             bid_level = order_book.ask_by_level(1)
-        instrument = InstrumentUtil.get_instrument(TRADING_INSTRUMENT_ID)
+        instrument = InstrumentUtil.get_instrument(TRADING_INSTRUMENT_ID, self.trading_instrument_type)
         step_pct = self.params_loader.get_strategy_params("step_pct")
         num_of_order_each_side = self.params_loader.get_strategy_params("num_of_order_each_side")
         single_order_size = max(
@@ -101,7 +101,9 @@ class SampleMM(BaseStrategy):
                     size=size,
                     price=price,
                     client_order_id=get_request_uuid("order"),
-                    pos_side=PosSide.net
+                    pos_side=PosSide.net,
+                    ccy=(instrument.base_ccy if side == OrderSide.BUY else instrument.quote_ccy)
+                    if instrument.inst_type == InstType.MARGIN else ""
                 )
                 to_place.append(order_req)
                 continue  # to new

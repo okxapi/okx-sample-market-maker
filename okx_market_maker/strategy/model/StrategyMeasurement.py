@@ -5,13 +5,14 @@ from decimal import Decimal
 from okx_market_maker.market_data_service.model.Tickers import Tickers
 from okx_market_maker.strategy.risk.RiskSnapshot import RiskSnapShot, AssetValueInst
 from okx_market_maker.utils.InstrumentUtil import InstrumentUtil
-from okx_market_maker.settings import TRADING_INSTRUMENT_ID
 from okx_market_maker.utils.OkxEnum import InstType, CtType
 from okx_market_maker import tickers_container
 
 
 @dataclass
 class StrategyMeasurement:
+    trading_instrument: str = ""
+    trading_instrument_type: InstType = None
     net_filled_qty: Decimal = 0
     buy_filled_qty: Decimal = 0
     sell_filled_qty: Decimal = 0
@@ -79,6 +80,8 @@ class StrategyMeasurement:
                 raise ValueError(f"No current mark px is available for {inst_id}, consider the instrument is retired. "
                                  f"Pls restart the program.")
             assumed_asset_value = self.calc_assumed_asset_value(asset_value_inst, current_mark_px)
+            if not assumed_asset_value:
+                assumed_asset_value = asset_value_inst.asset_value
             # print(f"{key} assumed asset value {assumed_asset_value}")
             delta_map[ccy] -= assumed_asset_value
         for ccy in delta_map:
@@ -92,15 +95,28 @@ class StrategyMeasurement:
     @staticmethod
     def calc_assumed_asset_value(asset_value_inst: AssetValueInst, current_mark_px: float) -> float:
         instrument = asset_value_inst.instrument
+        if instrument.inst_type in [InstType.MARGIN]:
+            """
+            For Margin P&L calculation, please refer to this page:
+            https://www.okx.com/help-center/6997022292493 
+            """
+            if asset_value_inst.pos_ccy == instrument.base_ccy and asset_value_inst.pos_ccy == asset_value_inst.ccy:
+                return asset_value_inst.pos + asset_value_inst.liability / current_mark_px
+            if asset_value_inst.pos_ccy == instrument.quote_ccy and asset_value_inst.pos_ccy == asset_value_inst.ccy:
+                return asset_value_inst.pos + asset_value_inst.liability * current_mark_px
+            if asset_value_inst.pos_ccy == instrument.base_ccy and asset_value_inst.pos_ccy != asset_value_inst.ccy:
+                return asset_value_inst.pos * current_mark_px + asset_value_inst.liability
+            if asset_value_inst.pos_ccy == instrument.quote_ccy and asset_value_inst.pos_ccy != asset_value_inst.ccy:
+                return asset_value_inst.pos / current_mark_px + asset_value_inst.liability
         if instrument.inst_type in [InstType.SWAP, InstType.FUTURES]:
             if instrument.ct_type == CtType.LINEAR:
-                return asset_value_inst.pos * asset_value_inst.instrument.ct_mul * asset_value_inst.instrument.ct_val \
+                return asset_value_inst.pos * instrument.ct_mul * instrument.ct_val \
                        * (current_mark_px - asset_value_inst.avg_px)
             if instrument.ct_type == CtType.INVERSE:
-                return asset_value_inst.pos * asset_value_inst.instrument.ct_mul * asset_value_inst.instrument.ct_val \
+                return asset_value_inst.pos * instrument.ct_mul * instrument.ct_val \
                        * (1 / asset_value_inst.avg_px - 1 / current_mark_px)
         if instrument.inst_type in [InstType.OPTION]:
-            return asset_value_inst.pos * asset_value_inst.instrument.ct_mul * asset_value_inst.instrument.ct_val \
+            return asset_value_inst.pos * instrument.ct_mul * instrument.ct_val \
                    * current_mark_px
         return 0.0
 
@@ -112,7 +128,7 @@ class StrategyMeasurement:
         self.asset_value_change_in_usdt_since_running = \
             self._current_risk_snapshot.asset_usdt_value - self._inception_risk_snapshot.asset_usdt_value
         self.pnl_in_usdt_since_running = self.calc_pnl()
-        instrument = InstrumentUtil.get_instrument(TRADING_INSTRUMENT_ID)
+        instrument = InstrumentUtil.get_instrument(self.trading_instrument, self.trading_instrument_type)
         exposure_ccy = InstrumentUtil.get_asset_exposure_ccy(instrument)
         self.trading_inst_exposure_ccy = exposure_ccy
         price = self._current_risk_snapshot.price_to_usdt_snapshot.get(exposure_ccy)
@@ -121,14 +137,14 @@ class StrategyMeasurement:
             init_cash = self._inception_risk_snapshot.asset_cash_snapshot.get(exposure_ccy)
             self.trading_instrument_exposure_in_base = current_cash - init_cash
             self.trading_instrument_exposure_in_usdt = (current_cash - init_cash) * price
-        if instrument.inst_type in [InstType.SWAP, InstType.FUTURES, InstType.OPTION]:
+        if instrument.inst_type in [InstType.SWAP, InstType.FUTURES, InstType.OPTION, InstType.MARGIN]:
             delta = 0
             for key, value in self._current_risk_snapshot.delta_instrument_snapshot.items():
-                if TRADING_INSTRUMENT_ID in key:
+                if self.trading_instrument in key:
                     delta += value
             init_delta = 0
             for key, value in self._inception_risk_snapshot.delta_instrument_snapshot.items():
-                if TRADING_INSTRUMENT_ID in key:
+                if self.trading_instrument in key:
                     init_delta += value
             self.trading_instrument_exposure_in_base = delta - init_delta
             self.trading_instrument_exposure_in_usdt = (delta - init_delta) * price
@@ -142,7 +158,7 @@ class StrategyMeasurement:
               f"{datetime.datetime.fromtimestamp(self._inception_risk_snapshot.timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')}\n"
               f"P&L since inception(USDT): {self.pnl_in_usdt_since_running:.2f}\n"
               f"Asset Value Change since inception(USDT): {self.asset_value_change_in_usdt_since_running:.2f}\n"
-              f"Trading Instrument: {TRADING_INSTRUMENT_ID}\n"
+              f"Trading Instrument: {self.trading_instrument} ({self.trading_instrument_type.value})\n"
               f"Trading Instrument Exposure ({self.trading_inst_exposure_ccy}): "
               f"{self.trading_instrument_exposure_in_base:.4f}\nTrading Instrument Exposure (USDT): "
               f"{self.trading_instrument_exposure_in_usdt:.2f}\nNet Traded Position: {self.net_filled_qty}\n"

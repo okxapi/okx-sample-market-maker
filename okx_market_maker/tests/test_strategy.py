@@ -8,13 +8,15 @@ from okx_market_maker.position_management_service.model.Account import Account
 from okx_market_maker.settings import ORDER_BOOK_DELAYED_SEC, ACCOUNT_DELAYED_SEC
 from okx_market_maker.strategy.SampleMM import SampleMM, OrderBook, TRADING_INSTRUMENT_ID
 from okx_market_maker.strategy.model.StrategyOrder import StrategyOrder, StrategyOrderStatus
-from okx_market_maker.utils.OkxEnum import OrderState, OrderSide, OrderType
+from okx_market_maker.utils.OkxEnum import OrderState, OrderSide, OrderType, AccountConfigMode, InstType, TdMode
+from okx_market_maker.utils.TdModeUtil import TdModeUtil
 
 
 class TestStrategy(TestCase):
     def setUp(self) -> None:
         strategy = SampleMM()
         self.strategy = strategy
+        self.strategy.set_strategy_measurement("BTC-USDT-SWAP", trading_instrument_type=InstType.SWAP)
         order_book = OrderBook(TRADING_INSTRUMENT_ID)
         order_book.set_asks_on_update(OrderBookLevel(price=2, quantity=2, order_count=1, price_string="2",
                                                      quantity_string="2", order_count_string="1"))
@@ -105,3 +107,24 @@ class TestStrategy(TestCase):
                          StrategyOrderStatus.PARTIALLY_FILLED)
         self.assertEqual(self.strategy._strategy_order_dict["order4"].filled_size, order4.fill_sz)
         self.assertEqual(self.strategy._strategy_measurement.net_filled_qty, Decimal("1.5"))
+
+    def test_decide_td_mode(self):
+        td_mode = TdModeUtil.decide_trading_mode(AccountConfigMode.CASH, InstType.SPOT, td_mode_setting="cross")
+        self.assertEqual(td_mode, TdMode.CASH)
+        td_mode = TdModeUtil.decide_trading_mode(AccountConfigMode.CASH, InstType.OPTION, td_mode_setting="cross")
+        self.assertEqual(td_mode, TdMode.CASH)
+        td_mode = TdModeUtil.decide_trading_mode(AccountConfigMode.SINGLE_CCY_MARGIN, InstType.SPOT,
+                                                 td_mode_setting="cross")
+        self.assertEqual(td_mode, TdMode.CASH)
+        td_mode = TdModeUtil.decide_trading_mode(AccountConfigMode.SINGLE_CCY_MARGIN, InstType.OPTION,
+                                                 td_mode_setting="cross")
+        self.assertEqual(td_mode, TdMode.CROSS)
+        td_mode = TdModeUtil.decide_trading_mode(AccountConfigMode.SINGLE_CCY_MARGIN, InstType.SWAP,
+                                                 td_mode_setting="isolated")
+        self.assertEqual(td_mode, TdMode.ISOLATED)
+        td_mode = TdModeUtil.decide_trading_mode(AccountConfigMode.MULTI_CCY_MARGIN, InstType.SPOT,
+                                                 td_mode_setting="isolated")
+        self.assertEqual(td_mode, TdMode.CROSS)
+        td_mode = TdModeUtil.decide_trading_mode(AccountConfigMode.MULTI_CCY_MARGIN, InstType.MARGIN,
+                                                 td_mode_setting="cross")
+        self.assertEqual(td_mode, TdMode.ISOLATED)
