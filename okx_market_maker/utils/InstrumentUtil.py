@@ -4,6 +4,7 @@ from decimal import Decimal
 from okx.PublicData import PublicAPI
 
 from okx_market_maker import instruments
+from okx_market_maker.position_management_service.model.Positions import Position
 from okx_market_maker.settings import IS_PAPER_TRADING
 from okx_market_maker.utils.OkxEnum import InstType, OrderSide, InstState
 from okx_market_maker.market_data_service.model.Instrument import Instrument
@@ -34,10 +35,12 @@ class InstrumentUtil:
             return InstType.OPTION
 
     @classmethod
-    def get_instrument(cls, inst_id: str) -> Instrument:
-        if inst_id in instruments:
-            return instruments[inst_id]
+    def get_instrument(cls, inst_id: str, query_inst_type: InstType = None) -> Instrument:
         inst_type = InstrumentUtil.get_inst_type_from_inst_id(inst_id)
+        if inst_type == InstType.SPOT and query_inst_type == InstType.MARGIN:
+            inst_type = query_inst_type
+        if f"{inst_id}:{inst_type.value}" in instruments:
+            return instruments[f"{inst_id}:{inst_type.value}"]
         uly = ''
         if inst_type == InstType.OPTION:
             uly = inst_id.split('-')[0] + '-' + inst_id.split('-')[1]
@@ -49,7 +52,7 @@ class InstrumentUtil:
         instrument = Instrument.init_from_json(json_response)
         if instrument.state != InstState.LIVE:
             raise ValueError(f"{inst_id} inst state error in OKX: {instrument.state}")
-        instruments[instrument.inst_id] = instrument
+        instruments[f"{inst_id}:{inst_type.value}"] = instrument
         return instrument
 
     @classmethod
@@ -64,7 +67,9 @@ class InstrumentUtil:
         return (round(Decimal(str(quantity)) / instrument.lot_sz) * instrument.lot_sz).to_eng_string()
 
     @classmethod
-    def get_asset_value_ccy(cls, instrument: Instrument) -> str:
+    def get_asset_value_ccy(cls, instrument: Instrument, position: Position) -> str:
+        if instrument.inst_type == InstType.MARGIN:
+            return position.ccy
         return instrument.settle_ccy
 
     @classmethod
