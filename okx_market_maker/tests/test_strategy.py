@@ -16,6 +16,7 @@ class TestStrategy(TestCase):
     def setUp(self) -> None:
         strategy = SampleMM()
         self.strategy = strategy
+        self.strategy.set_strategy_measurement("BTC-USDT-SWAP", trading_instrument_type=InstType.SWAP)
         order_book = OrderBook(TRADING_INSTRUMENT_ID)
         order_book.set_asks_on_update(OrderBookLevel(price=2, quantity=2, order_count=1, price_string="2",
                                                      quantity_string="2", order_count_string="1"))

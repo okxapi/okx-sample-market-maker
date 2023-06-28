@@ -404,12 +404,16 @@ class BaseStrategy(ABC):
                 return InstType.SPOT
         return guessed_inst_type
 
+    def set_strategy_measurement(self, trading_instrument, trading_instrument_type: InstType):
+        self._strategy_measurement = StrategyMeasurement(trading_instrument=trading_instrument,
+                                                         trading_instrument_type=trading_instrument_type)
+
     def run(self):
         self._set_account_config()
         self.trading_instrument_type = self.trading_instrument_type()
         InstrumentUtil.get_instrument(TRADING_INSTRUMENT_ID, self.trading_instrument_type)
-        self._strategy_measurement = StrategyMeasurement(trading_instrument=TRADING_INSTRUMENT_ID,
-                                                         trading_instrument_type=self.trading_instrument_type)
+        self.set_strategy_measurement(trading_instrument=TRADING_INSTRUMENT_ID,
+                                      trading_instrument_type=self.trading_instrument_type)
         self._run_exchange_connection()
         while 1:
             try:
