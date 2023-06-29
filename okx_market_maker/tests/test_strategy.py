@@ -79,8 +79,8 @@ class TestStrategy(TestCase):
     def test_update_strategy_order(self):
         order1 = Order(cl_ord_id="order1", ord_id='1', state=OrderState.LIVE, side=OrderSide.BUY)
         order2 = Order(cl_ord_id="order2", ord_id='2', state=OrderState.CANCELED, side=OrderSide.BUY)
-        order3 = Order(cl_ord_id="order3", ord_id='3', state=OrderState.FILLED, fill_sz="1", side=OrderSide.BUY)
-        order4 = Order(cl_ord_id="order4", ord_id='4', state=OrderState.PARTIALLY_FILLED, fill_sz="0.5",
+        order3 = Order(cl_ord_id="order3", ord_id='3', state=OrderState.FILLED, acc_fill_sz="1", side=OrderSide.BUY)
+        order4 = Order(cl_ord_id="order4", ord_id='4', state=OrderState.PARTIALLY_FILLED, acc_fill_sz="0.5",
                        side=OrderSide.BUY)
         orders = Orders(
             _order_map={'1': order1, "2": order2, "3": order3, "4": order4},
@@ -105,7 +105,7 @@ class TestStrategy(TestCase):
         self.assertIn("order4", self.strategy._strategy_order_dict)
         self.assertEqual(self.strategy._strategy_order_dict["order4"].strategy_order_status,
                          StrategyOrderStatus.PARTIALLY_FILLED)
-        self.assertEqual(self.strategy._strategy_order_dict["order4"].filled_size, order4.fill_sz)
+        self.assertEqual(self.strategy._strategy_order_dict["order4"].filled_size, order4.acc_fill_sz)
         self.assertEqual(self.strategy._strategy_measurement.net_filled_qty, Decimal("1.5"))
 
     def test_decide_td_mode(self):

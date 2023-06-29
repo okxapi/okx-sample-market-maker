@@ -6,7 +6,7 @@ from okx_market_maker.utils.OkxEnum import *
 
 @dataclass
 class Order:
-    acc_fill_sz: float = 0
+    acc_fill_sz: str = "0"
     amend_result: str = 0
     avg_px: float = 0
     c_time: int = 0
@@ -45,7 +45,7 @@ class Order:
     @classmethod
     def init_from_json(cls, json_response):
         order = Order()
-        order.acc_fill_sz = float(json_response.get("accFillSz", 0))
+        order.acc_fill_sz = json_response.get("accFillSz", "0")
         order.amend_result = json_response.get("amendResult")
         order.avg_px = float(json_response.get("avgPx", 0))
         order.c_time = int(json_response.get("cTime", 0))
