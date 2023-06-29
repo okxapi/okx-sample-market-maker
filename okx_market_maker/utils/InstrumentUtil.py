@@ -77,6 +77,10 @@ class InstrumentUtil:
         return instrument.inst_id.split("-")[0]
 
     @classmethod
+    def get_asset_quote_ccy(cls, instrument: Instrument) -> str:
+        return instrument.inst_id.split("-")[1]
+
+    @classmethod
     def get_instrument_mark_px(cls, inst_id: str) -> float:
         if not mark_px_container:
             return 0

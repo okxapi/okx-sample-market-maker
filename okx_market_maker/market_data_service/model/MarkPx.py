@@ -35,3 +35,9 @@ class MarkPxCache:
 
     def get_mark_px(self, inst_id) -> MarkPx:
         return self._mark_px_map.get(inst_id)
+
+    def get_usdt_to_usd_rate(self) -> float:
+        if self._mark_px_map.get("BTC-USD-SWAP") or self._mark_px_map.get("BTC-USDT-SWAP"):
+            return 1
+        usdt_to_usd = self._mark_px_map["BTC-USD-SWAP"].mark_px / self._mark_px_map["BTC-USDT-SWAP"].mark_px
+        return usdt_to_usd

@@ -63,8 +63,8 @@ PLACE ORDER limit sell BTC-USDT-SWAP 2.0 @ 26600.4
 ==== Risk Summary ====
 Time: 2023-06-23 15:37:53
 Inception: 2023-06-23 15:37:21
-P&L since inception(USDT): 10.89
-Asset Value Change since inception(USDT): -51.25
+P&L since inception (USD): 10.89
+Asset Value Change since inception (USD): -51.25
 Trading Instrument: BTC-USDT-SWAP (SWAP)
 Trading Instrument Exposure (BTC): -0.0060
 Trading Instrument Exposure (USDT): -179.91

@@ -21,12 +21,12 @@ class AssetValueInst:
 class RiskSnapShot:
     timestamp: int = 0
 
-    asset_usdt_value: float = 0
-    price_to_usdt_snapshot: Dict[str, float] = field(default_factory=lambda: dict())
+    asset_usd_value: float = 0
+    price_to_usd_snapshot: Dict[str, float] = field(default_factory=lambda: dict())
     asset_cash_snapshot: Dict[str, float] = field(default_factory=lambda: dict())
     asset_loan_snapshot: Dict[str, float] = field(default_factory=lambda: dict())
     asset_instrument_value_snapshot: Dict[str, AssetValueInst] = field(default_factory=lambda: dict())
     mark_px_instrument_snapshot: Dict[str, float] = field(default_factory=lambda: dict())
 
-    delta_usdt_value: float = 0
+    delta_usd_value: float = 0
     delta_instrument_snapshot: Dict[str, float] = field(default_factory=lambda: dict())

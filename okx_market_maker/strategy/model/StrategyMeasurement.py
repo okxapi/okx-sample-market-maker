@@ -6,7 +6,7 @@ from okx_market_maker.market_data_service.model.Tickers import Tickers
 from okx_market_maker.strategy.risk.RiskSnapshot import RiskSnapShot, AssetValueInst
 from okx_market_maker.utils.InstrumentUtil import InstrumentUtil
 from okx_market_maker.utils.OkxEnum import InstType, CtType
-from okx_market_maker import tickers_container
+from okx_market_maker import tickers_container, mark_px_container, order_books
 
 
 @dataclass
@@ -18,11 +18,12 @@ class StrategyMeasurement:
     sell_filled_qty: Decimal = 0
     trading_volume: Decimal = 0
 
-    asset_value_change_in_usdt_since_running: float = 0
-    pnl_in_usdt_since_running: float = 0
+    asset_value_change_in_usd_since_running: float = 0
+    pnl_in_usd_since_running: float = 0
     trading_instrument_exposure_in_base: float = 0
-    trading_instrument_exposure_in_usdt: float = 0
+    trading_instrument_exposure_in_quote: float = 0
     trading_inst_exposure_ccy: str = ""
+    trading_inst_quote_ccy: str = ""
     _current_risk_snapshot: RiskSnapShot = None
     _inception_risk_snapshot: RiskSnapShot = None
 
@@ -52,6 +53,8 @@ class StrategyMeasurement:
         """
         pnl = 0
         delta_map = {}
+        mark_px_cache = mark_px_container[0]
+        usdt_to_usd_rate = mark_px_cache.get_usdt_to_usd_rate()
         for ccy in self._current_risk_snapshot.asset_cash_snapshot:
             if ccy not in delta_map:
                 delta_map[ccy] = 0
@@ -85,10 +88,10 @@ class StrategyMeasurement:
             # print(f"{key} assumed asset value {assumed_asset_value}")
             delta_map[ccy] -= assumed_asset_value
         for ccy in delta_map:
-            price = self._current_risk_snapshot.price_to_usdt_snapshot.get(ccy)
+            price = self._current_risk_snapshot.price_to_usd_snapshot.get(ccy)
             if not price:
                 tickers: Tickers = tickers_container[0]
-                price = tickers.get_usdt_price_by_ccy(ccy)
+                price = tickers.get_usdt_price_by_ccy(ccy) * usdt_to_usd_rate
             pnl += price * delta_map[ccy]
         return pnl
 
@@ -125,18 +128,21 @@ class StrategyMeasurement:
             self._inception_risk_snapshot = risk_snapshot
             return
         self._current_risk_snapshot = risk_snapshot
-        self.asset_value_change_in_usdt_since_running = \
-            self._current_risk_snapshot.asset_usdt_value - self._inception_risk_snapshot.asset_usdt_value
-        self.pnl_in_usdt_since_running = self.calc_pnl()
+        self.asset_value_change_in_usd_since_running = \
+            self._current_risk_snapshot.asset_usd_value - self._inception_risk_snapshot.asset_usd_value
+        self.pnl_in_usd_since_running = self.calc_pnl()
         instrument = InstrumentUtil.get_instrument(self.trading_instrument, self.trading_instrument_type)
         exposure_ccy = InstrumentUtil.get_asset_exposure_ccy(instrument)
+        quote_ccy = InstrumentUtil.get_asset_quote_ccy(instrument)
         self.trading_inst_exposure_ccy = exposure_ccy
-        price = self._current_risk_snapshot.price_to_usdt_snapshot.get(exposure_ccy)
+        self.trading_inst_quote_ccy = quote_ccy
+        price = self._current_risk_snapshot.price_to_usd_snapshot.get(exposure_ccy)
+        quote_price = self._current_risk_snapshot.price_to_usd_snapshot.get(quote_ccy)
         if instrument.inst_type == InstType.SPOT:
             current_cash = self._current_risk_snapshot.asset_cash_snapshot.get(exposure_ccy)
             init_cash = self._inception_risk_snapshot.asset_cash_snapshot.get(exposure_ccy)
             self.trading_instrument_exposure_in_base = current_cash - init_cash
-            self.trading_instrument_exposure_in_usdt = (current_cash - init_cash) * price
+            self.trading_instrument_exposure_in_quote = (current_cash - init_cash) * price / quote_price
         if instrument.inst_type in [InstType.SWAP, InstType.FUTURES, InstType.OPTION, InstType.MARGIN]:
             delta = 0
             for key, value in self._current_risk_snapshot.delta_instrument_snapshot.items():
@@ -147,19 +153,22 @@ class StrategyMeasurement:
                 if self.trading_instrument in key:
                     init_delta += value
             self.trading_instrument_exposure_in_base = delta - init_delta
-            self.trading_instrument_exposure_in_usdt = (delta - init_delta) * price
+            self.trading_instrument_exposure_in_quote = (delta - init_delta) * price / quote_price
         self.print_risk_summary()
 
     def print_risk_summary(self):
+        curr_time_string = datetime.datetime.fromtimestamp(
+            self._current_risk_snapshot.timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
+        init_time_string = datetime.datetime.fromtimestamp(
+            self._inception_risk_snapshot.timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
         print(f"==== Risk Summary ====\n"
-              f"Time: "
-              f"{datetime.datetime.fromtimestamp(self._current_risk_snapshot.timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')}\n"
-              f"Inception: "
-              f"{datetime.datetime.fromtimestamp(self._inception_risk_snapshot.timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')}\n"
-              f"P&L since inception(USDT): {self.pnl_in_usdt_since_running:.2f}\n"
-              f"Asset Value Change since inception(USDT): {self.asset_value_change_in_usdt_since_running:.2f}\n"
+              f"Time: {curr_time_string}\n"
+              f"Inception: {init_time_string}\n"
+              f"P&L since inception (USD): {self.pnl_in_usd_since_running:.2f}\n"
+              f"Asset Value Change since inception (USD): {self.asset_value_change_in_usd_since_running:.2f}\n"
               f"Trading Instrument: {self.trading_instrument} ({self.trading_instrument_type.value})\n"
               f"Trading Instrument Exposure ({self.trading_inst_exposure_ccy}): "
-              f"{self.trading_instrument_exposure_in_base:.4f}\nTrading Instrument Exposure (USDT): "
-              f"{self.trading_instrument_exposure_in_usdt:.2f}\nNet Traded Position: {self.net_filled_qty}\n"
+              f"{self.trading_instrument_exposure_in_base:.4f}\n"
+              f"Trading Instrument Exposure ({self.trading_inst_quote_ccy}): "
+              f"{self.trading_instrument_exposure_in_quote:.2f}\nNet Traded Position: {self.net_filled_qty}\n"
               f"Net Trading Volume: {self.trading_volume}\n==== End of Summary ====")

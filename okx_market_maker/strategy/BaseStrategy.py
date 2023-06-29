@@ -17,7 +17,8 @@ from okx_market_maker.order_management_service.model.OrderRequest import PlaceOr
 from okx.Trade import TradeAPI
 from okx.Account import AccountAPI
 from okx_market_maker.settings import *
-from okx_market_maker import orders_container, order_books, account_container, positions_container, tickers_container
+from okx_market_maker import orders_container, order_books, account_container, positions_container, tickers_container, \
+    mark_px_container
 from okx_market_maker.strategy.model.StrategyOrder import StrategyOrder, StrategyOrderStatus
 from okx_market_maker.strategy.model.StrategyMeasurement import StrategyMeasurement
 from okx_market_maker.market_data_service.model.OrderBook import OrderBook
@@ -331,9 +332,8 @@ class BaseStrategy(ABC):
             strategy_order = self._strategy_order_dict[client_order_id]
             if not exchange_order:
                 order_not_found_in_cache[client_order_id] = strategy_order
-            if exchange_order.state == OrderState.LIVE:
-                strategy_order.strategy_order_status = StrategyOrderStatus.LIVE
-            filled_size_from_update = Decimal(exchange_order.fill_sz) - Decimal(strategy_order.filled_size)
+
+            filled_size_from_update = Decimal(exchange_order.acc_fill_sz) - Decimal(strategy_order.filled_size)
             side_flag = 1 if exchange_order.side == OrderSide.BUY else -1
             self._strategy_measurement.net_filled_qty += filled_size_from_update * side_flag
             self._strategy_measurement.trading_volume += filled_size_from_update
@@ -341,16 +341,18 @@ class BaseStrategy(ABC):
                 self._strategy_measurement.buy_filled_qty += filled_size_from_update
             else:
                 self._strategy_measurement.sell_filled_qty += filled_size_from_update
-            if exchange_order.state == OrderState.CANCELED:
-                del self._strategy_order_dict[client_order_id]
-                order_to_remove_from_cache.append(exchange_order)
+            if exchange_order.state == OrderState.LIVE:
+                strategy_order.strategy_order_status = StrategyOrderStatus.LIVE
+
             if exchange_order.state == OrderState.PARTIALLY_FILLED:
                 strategy_order.strategy_order_status = StrategyOrderStatus.PARTIALLY_FILLED
-                strategy_order.filled_size = exchange_order.fill_sz
+                strategy_order.filled_size = exchange_order.acc_fill_sz
                 strategy_order.avg_fill_price = exchange_order.fill_px
-            if exchange_order.state == OrderState.FILLED:
+
+            if exchange_order.state == OrderState.CANCELED or exchange_order.state == OrderState.FILLED:
                 del self._strategy_order_dict[client_order_id]
                 order_to_remove_from_cache.append(exchange_order)
+
         orders_cache.remove_orders(order_to_remove_from_cache)
         if order_not_found_in_cache:
             logging.warning(f"Strategy Orders not found in order cache: {order_not_found_in_cache}")
@@ -365,7 +367,8 @@ class BaseStrategy(ABC):
         account = self.get_account()
         positions = self.get_positions()
         tickers = tickers_container[0]
-        risk_snapshot = RiskCalculator.generate_risk_snapshot(account, positions, tickers)
+        mark_px_cache = mark_px_container[0]
+        risk_snapshot = RiskCalculator.generate_risk_snapshot(account, positions, tickers, mark_px_cache)
         self._strategy_measurement.consume_risk_snapshot(risk_snapshot)
 
     def check_status(self):
